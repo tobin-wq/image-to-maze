@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Maze</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            width: 100%;
+            max-width: 500px;
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area.has-image {
+            padding: 1rem;
+        }
+
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 0.8rem;
+            opacity: 0.4;
+        }
+
+        .upload-area p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .preview-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .preview {
+            max-width: 120px;
+            max-height: 90px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        .preview-info {
+            text-align: left;
+        }
+
+        .preview-info .name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .preview-info .dims {
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 0.2rem;
+        }
+
+        .preview-info .change {
+            color: #667eea;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 0.3rem;
+        }
+
+        .preview-info .change:hover {
+            text-decoration: underline;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            max-width: 700px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .control-group label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .control-group .value {
+            font-size: 0.75rem;
+            color: #667eea;
+            float: right;
+        }
+
+        input[type="range"] {
+            width: 130px;
+            accent-color: #667eea;
+            height: 6px;
+        }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            user-select: none;
+            padding: 0.5rem 0;
+        }
+
+        .toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 0.6rem 1.4rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #1a1a1a;
+            color: #ccc;
+            border: 1px solid #333;
+        }
+
+        .btn-secondary:hover {
+            background: #252525;
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .output-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        #maze-canvas {
+            border-radius: 4px;
+            max-width: 100%;
+            display: none;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        #maze-canvas.transparent-bg {
+            background: repeating-conic-gradient(#2a2a2a 0% 25%, #1a1a1a 0% 50%) 0 0 / 20px 20px;
+        }
+
+        .spinner {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border: 3px solid #222;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem 0.5rem;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+
+            .controls {
+                gap: 1rem;
+            }
+
+            input[type="range"] {
+                width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Image to Maze</h1>
+    <p class="subtitle">Upload an image and turn it into a solvable maze</p>
+
+    <div class="upload-area" id="upload-area">
+        <div id="upload-prompt">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p>Drop an image here, click to upload, or paste (Ctrl+V)</p>
+        </div>
+        <div id="upload-preview" style="display: none;">
+            <div class="preview-container">
+                <img id="preview-img" class="preview" alt="Preview">
+                <div class="preview-info">
+                    <div class="name" id="preview-name"></div>
+                    <div class="dims" id="preview-dims"></div>
+                    <div class="change" onclick="document.getElementById('file-input').click()">Change image</div>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="file-input" accept="image/*">
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="complexity">Complexity</label>
+            <input type="range" id="complexity" min="2" max="300" value="150">
+            <span class="value" id="complexity-val">150</span>
+        </div>
+
+        <div class="control-group">
+            <label for="contrast">Contrast</label>
+            <input type="range" id="contrast" min="5" max="30" value="15">
+            <span class="value" id="contrast-val">1.5</span>
+        </div>
+
+        <label class="toggle">
+            <input type="checkbox" id="colored">
+            <span>Colored</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="show-solution">
+            <span>Show solution</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="remove-bg">
+            <span>Remove bg</span>
+        </label>
+
+        <button class="btn btn-primary" id="generate-btn" disabled>Generate Maze</button>
+    </div>
+
+    <div class="output-area">
+        <div class="spinner" id="spinner"></div>
+        <canvas id="maze-canvas"></canvas>
+        <div class="actions" id="actions" style="display: none;">
+            <button class="btn btn-primary" id="download-btn">Download PNG</button>
+            <button class="btn btn-secondary" id="regenerate-btn">Regenerate</button>
+        </div>
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        // --- State ---
+        let loadedImg = null;
+        let imgPixels = null;
+        let imgW = 0, imgH = 0;
+        let mazeCells = null;
+        let mazeCols = 0, mazeRows = 0;
+        let cellColors = null;
+        let solution = null;
+
+        // --- DOM ---
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const uploadPreview = document.getElementById('upload-preview');
+        const previewImg = document.getElementById('preview-img');
+        const previewName = document.getElementById('preview-name');
+        const previewDims = document.getElementById('preview-dims');
+        const complexitySlider = document.getElementById('complexity');
+        const complexityVal = document.getElementById('complexity-val');
+        const contrastSlider = document.getElementById('contrast');
+        const contrastVal = document.getElementById('contrast-val');
+        const coloredCheck = document.getElementById('colored');
+        const solutionCheck = document.getElementById('show-solution');
+        const removeBgCheck = document.getElementById('remove-bg');
+        const generateBtn = document.getElementById('generate-btn');
+        const canvas = document.getElementById('maze-canvas');
+        const ctx = canvas.getContext('2d');
+        const spinner = document.getElementById('spinner');
+        const actions = document.getElementById('actions');
+        const downloadBtn = document.getElementById('download-btn');
+        const regenerateBtn = document.getElementById('regenerate-btn');
+        const status = document.getElementById('status');
+
+        // --- Image Upload ---
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', e => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+
+        uploadArea.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) handleFile(file);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => handleImage(img, file.name);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleImage(img, name) {
+            loadedImg = img;
+
+            // Extract pixel data
+            const maxDim = 800;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+                const scale = maxDim / Math.max(w, h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+            }
+            imgW = w;
+            imgH = h;
+
+            const tmpCanvas = document.createElement('canvas');
+            tmpCanvas.width = w;
+            tmpCanvas.height = h;
+            const tmpCtx = tmpCanvas.getContext('2d');
+            tmpCtx.drawImage(img, 0, 0, w, h);
+            imgPixels = tmpCtx.getImageData(0, 0, w, h).data;
+
+            // Update UI
+            previewImg.src = tmpCanvas.toDataURL();
+            previewName.textContent = name;
+            previewDims.textContent = img.width + ' x ' + img.height + ' px';
+            uploadPrompt.style.display = 'none';
+            uploadPreview.style.display = 'flex';
+            uploadArea.classList.add('has-image');
+            generateBtn.disabled = false;
+        }
+
+        // --- Paste support ---
+        document.addEventListener('paste', e => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    const img = new Image();
+                    img.onload = () => handleImage(img, 'Pasted image');
+                    img.src = URL.createObjectURL(blob);
+                    return;
+                }
+            }
+        });
+
+        // --- Slider labels ---
+        complexitySlider.addEventListener('input', () => {
+            complexityVal.textContent = complexitySlider.value;
+        });
+
+        contrastSlider.addEventListener('input', () => {
+            contrastVal.textContent = (contrastSlider.value / 10).toFixed(1);
+        });
+
+        // --- Live re-render on toggle change ---
+        coloredCheck.addEventListener('change', () => {
+            if (mazeCells) renderMaze();
+        });
+
+        solutionCheck.addEventListener('change', () => {
+            if (mazeCells) renderMaze();
+        });
+
+        removeBgCheck.addEventListener('change', () => {
+            if (mazeCells) renderMaze();
+        });
+
+        contrastSlider.addEventListener('input', () => {
+            if (mazeCells) renderMaze();
+        });
+
+        // --- Generate ---
+        generateBtn.addEventListener('click', generate);
+        regenerateBtn.addEventListener('click', generate);
+
+        function generate() {
+            if (!imgPixels) return;
+
+            spinner.style.display = 'block';
+            canvas.style.display = 'none';
+            actions.style.display = 'none';
+            status.textContent = 'Generating maze...';
+
+            // Use setTimeout to let the spinner render
+            setTimeout(() => {
+                const complexity = Math.max(2, parseInt(complexitySlider.value));
+                const aspect = imgH / imgW;
+                mazeCols = complexity;
+                mazeRows = Math.max(2, Math.round(complexity * aspect));
+
+                // Compute cell colors (average image region per cell)
+                cellColors = computeCellColors(imgPixels, imgW, imgH, mazeCols, mazeRows);
+
+                // Generate maze
+                mazeCells = generateMazeGrid(mazeCols, mazeRows);
+
+                // Open entrance and exit
+                mazeCells[0].walls.top = false;
+                mazeCells[mazeRows * mazeCols - 1].walls.bottom = false;
+
+                // Solve
+                solution = solveMaze(mazeCells, mazeCols, mazeRows);
+
+                // Render
+                renderMaze();
+
+                spinner.style.display = 'none';
+                canvas.style.display = 'block';
+                actions.style.display = 'flex';
+                status.textContent = mazeCols + ' x ' + mazeRows + ' cells, ' + solution.length + ' steps in solution';
+            }, 30);
+        }
+
+        // --- Cell color computation ---
+        function computeCellColors(data, iw, ih, cols, rows) {
+            const colors = new Array(cols * rows);
+            for (let cy = 0; cy < rows; cy++) {
+                for (let cx = 0; cx < cols; cx++) {
+                    const x1 = Math.floor(cx / cols * iw);
+                    const x2 = Math.max(x1 + 1, Math.floor((cx + 1) / cols * iw));
+                    const y1 = Math.floor(cy / rows * ih);
+                    const y2 = Math.max(y1 + 1, Math.floor((cy + 1) / rows * ih));
+
+                    let rS = 0, gS = 0, bS = 0, n = 0;
+                    for (let py = y1; py < y2; py++) {
+                        for (let px = x1; px < x2; px++) {
+                            const i = (py * iw + px) * 4;
+                            rS += data[i];
+                            gS += data[i + 1];
+                            bS += data[i + 2];
+                            n++;
+                        }
+                    }
+
+                    const r = Math.round(rS / n);
+                    const g = Math.round(gS / n);
+                    const b = Math.round(bS / n);
+                    const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+                    colors[cy * cols + cx] = { r, g, b, brightness };
+                }
+            }
+            return colors;
+        }
+
+        // --- Maze generation (iterative DFS / recursive backtracker) ---
+        function generateMazeGrid(cols, rows) {
+            const cells = new Array(cols * rows);
+            for (let i = 0; i < cells.length; i++) {
+                cells[i] = {
+                    x: i % cols,
+                    y: Math.floor(i / cols),
+                    walls: { top: true, right: true, bottom: true, left: true },
+                    visited: false
+                };
+            }
+
+            const stack = [];
+            const start = cells[0];
+            start.visited = true;
+            stack.push(start);
+
+            while (stack.length > 0) {
+                const cur = stack[stack.length - 1];
+                const cx = cur.x, cy = cur.y;
+
+                // Collect unvisited neighbors
+                const nbrs = [];
+                if (cy > 0 && !cells[(cy - 1) * cols + cx].visited)
+                    nbrs.push({ cell: cells[(cy - 1) * cols + cx], dir: 'top', opp: 'bottom' });
+                if (cx < cols - 1 && !cells[cy * cols + cx + 1].visited)
+                    nbrs.push({ cell: cells[cy * cols + cx + 1], dir: 'right', opp: 'left' });
+                if (cy < rows - 1 && !cells[(cy + 1) * cols + cx].visited)
+                    nbrs.push({ cell: cells[(cy + 1) * cols + cx], dir: 'bottom', opp: 'top' });
+                if (cx > 0 && !cells[cy * cols + cx - 1].visited)
+                    nbrs.push({ cell: cells[cy * cols + cx - 1], dir: 'left', opp: 'right' });
+
+                if (nbrs.length > 0) {
+                    const chosen = nbrs[Math.floor(Math.random() * nbrs.length)];
+                    cur.walls[chosen.dir] = false;
+                    chosen.cell.walls[chosen.opp] = false;
+                    chosen.cell.visited = true;
+                    stack.push(chosen.cell);
+                } else {
+                    stack.pop();
+                }
+            }
+
+            return cells;
+        }
+
+        // --- Solve maze (BFS) ---
+        function solveMaze(cells, cols, rows) {
+            const n = cells.length;
+            const prev = new Int32Array(n).fill(-1);
+            const visited = new Uint8Array(n);
+            const queue = [0];
+            visited[0] = 1;
+            const end = n - 1;
+            let head = 0;
+
+            while (head < queue.length) {
+                const idx = queue[head++];
+                if (idx === end) break;
+
+                const c = cells[idx];
+                const cx = c.x, cy = c.y;
+
+                const tryPush = (ni) => {
+                    if (!visited[ni]) {
+                        visited[ni] = 1;
+                        prev[ni] = idx;
+                        queue.push(ni);
+                    }
+                };
+
+                if (!c.walls.top && cy > 0) tryPush((cy - 1) * cols + cx);
+                if (!c.walls.right && cx < cols - 1) tryPush(cy * cols + cx + 1);
+                if (!c.walls.bottom && cy < rows - 1) tryPush((cy + 1) * cols + cx);
+                if (!c.walls.left && cx > 0) tryPush(cy * cols + cx - 1);
+            }
+
+            const path = [];
+            let cur = end;
+            while (cur !== -1) {
+                path.push(cur);
+                cur = prev[cur];
+            }
+            return path.reverse();
+        }
+
+        // --- Render ---
+        function renderMaze() {
+            const colored = coloredCheck.checked;
+            const showSol = solutionCheck.checked;
+            const gamma = parseInt(contrastSlider.value) / 10;
+
+            // Scale output canvas to a consistent size regardless of cell count
+            const maxPx = 1800;
+            const cellSize = Math.max(4, Math.floor(maxPx / Math.max(mazeCols, mazeRows)));
+
+            const w = mazeCols * cellSize;
+            const h = mazeRows * cellSize;
+
+            canvas.width = w;
+            canvas.height = h;
+
+            // Background
+            const removeBg = removeBgCheck.checked;
+            if (removeBg) {
+                ctx.clearRect(0, 0, w, h);
+                canvas.classList.add('transparent-bg');
+            } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+                canvas.classList.remove('transparent-bg');
+            }
+
+            const minT = Math.max(0.3, cellSize * 0.04);
+            const maxT = cellSize * 0.92;
+
+            // Helper: get wall color and thickness from adjacent cells
+            function wallStyle(idx1, idx2) {
+                let c;
+                if (idx2 === -1) {
+                    c = cellColors[idx1];
+                } else {
+                    const a = cellColors[idx1], b = cellColors[idx2];
+                    c = {
+                        r: (a.r + b.r) >> 1,
+                        g: (a.g + b.g) >> 1,
+                        b: (a.b + b.b) >> 1,
+                        brightness: (a.brightness + b.brightness) / 2
+                    };
+                }
+                const darkness = 1 - c.brightness;
+                const t = minT + Math.pow(darkness, gamma) * (maxT - minT);
+                const color = colored ? `rgb(${c.r},${c.g},${c.b})` : '#000000';
+                return { t, color };
+            }
+
+            ctx.lineCap = 'square';
+
+            // Draw horizontal walls
+            for (let y = 0; y <= mazeRows; y++) {
+                for (let x = 0; x < mazeCols; x++) {
+                    let hasWall;
+                    let idx1, idx2;
+                    if (y === 0) {
+                        hasWall = mazeCells[x].walls.top;
+                        idx1 = x;
+                        idx2 = -1;
+                    } else if (y === mazeRows) {
+                        hasWall = mazeCells[(mazeRows - 1) * mazeCols + x].walls.bottom;
+                        idx1 = (mazeRows - 1) * mazeCols + x;
+                        idx2 = -1;
+                    } else {
+                        hasWall = mazeCells[y * mazeCols + x].walls.top;
+                        idx1 = y * mazeCols + x;
+                        idx2 = (y - 1) * mazeCols + x;
+                    }
+
+                    if (!hasWall) continue;
+
+                    const s = wallStyle(idx1, idx2);
+                    ctx.strokeStyle = s.color;
+                    ctx.lineWidth = s.t;
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellSize, y * cellSize);
+                    ctx.lineTo((x + 1) * cellSize, y * cellSize);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw vertical walls
+            for (let y = 0; y < mazeRows; y++) {
+                for (let x = 0; x <= mazeCols; x++) {
+                    let hasWall;
+                    let idx1, idx2;
+                    if (x === 0) {
+                        hasWall = mazeCells[y * mazeCols].walls.left;
+                        idx1 = y * mazeCols;
+                        idx2 = -1;
+                    } else if (x === mazeCols) {
+                        hasWall = mazeCells[y * mazeCols + mazeCols - 1].walls.right;
+                        idx1 = y * mazeCols + mazeCols - 1;
+                        idx2 = -1;
+                    } else {
+                        hasWall = mazeCells[y * mazeCols + x].walls.left;
+                        idx1 = y * mazeCols + x;
+                        idx2 = y * mazeCols + x - 1;
+                    }
+
+                    if (!hasWall) continue;
+
+                    const s = wallStyle(idx1, idx2);
+                    ctx.strokeStyle = s.color;
+                    ctx.lineWidth = s.t;
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellSize, y * cellSize);
+                    ctx.lineTo(x * cellSize, (y + 1) * cellSize);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw grid intersection dots to fill corner gaps
+            for (let y = 0; y <= mazeRows; y++) {
+                for (let x = 0; x <= mazeCols; x++) {
+                    let maxThickness = 0;
+                    let bestColor = '#000';
+
+                    const checkWall = (hasWall, i1, i2) => {
+                        if (!hasWall) return;
+                        const s = wallStyle(i1, i2 === undefined ? -1 : i2);
+                        if (s.t > maxThickness) {
+                            maxThickness = s.t;
+                            bestColor = s.color;
+                        }
+                    };
+
+                    if (x < mazeCols && y < mazeRows) {
+                        const idx = y * mazeCols + x;
+                        checkWall(mazeCells[idx].walls.top, idx, y > 0 ? (y - 1) * mazeCols + x : undefined);
+                        checkWall(mazeCells[idx].walls.left, idx, x > 0 ? y * mazeCols + x - 1 : undefined);
+                    }
+                    if (x > 0 && y < mazeRows) {
+                        const idx = y * mazeCols + x - 1;
+                        checkWall(mazeCells[idx].walls.top, idx, y > 0 ? (y - 1) * mazeCols + x - 1 : undefined);
+                        checkWall(mazeCells[idx].walls.right, idx, x < mazeCols ? y * mazeCols + x : undefined);
+                    }
+                    if (x < mazeCols && y > 0) {
+                        const idx = (y - 1) * mazeCols + x;
+                        checkWall(mazeCells[idx].walls.bottom, idx, y < mazeRows ? y * mazeCols + x : undefined);
+                        checkWall(mazeCells[idx].walls.left, idx, x > 0 ? (y - 1) * mazeCols + x - 1 : undefined);
+                    }
+                    if (x > 0 && y > 0) {
+                        const idx = (y - 1) * mazeCols + x - 1;
+                        checkWall(mazeCells[idx].walls.bottom, idx, y < mazeRows ? y * mazeCols + x - 1 : undefined);
+                        checkWall(mazeCells[idx].walls.right, idx, x < mazeCols ? (y - 1) * mazeCols + x : undefined);
+                    }
+
+                    if (maxThickness > 0) {
+                        const half = maxThickness / 2;
+                        ctx.fillStyle = bestColor;
+                        ctx.fillRect(x * cellSize - half, y * cellSize - half, maxThickness, maxThickness);
+                    }
+                }
+            }
+
+            // Draw solution path
+            if (showSol && solution && solution.length > 0) {
+                ctx.strokeStyle = 'rgba(234, 67, 53, 0.65)';
+                ctx.lineWidth = Math.max(2, cellSize * 0.25);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+
+                // Start from entrance (above the grid)
+                const firstCell = mazeCells[solution[0]];
+                ctx.moveTo((firstCell.x + 0.5) * cellSize, 0);
+
+                for (let i = 0; i < solution.length; i++) {
+                    const cell = mazeCells[solution[i]];
+                    ctx.lineTo((cell.x + 0.5) * cellSize, (cell.y + 0.5) * cellSize);
+                }
+
+                // End past exit
+                const lastCell = mazeCells[solution[solution.length - 1]];
+                ctx.lineTo((lastCell.x + 0.5) * cellSize, mazeRows * cellSize);
+                ctx.stroke();
+            }
+
+            // Entrance / exit markers
+            const markerSize = Math.max(3, cellSize * 0.35);
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.arc(0.5 * cellSize, 0, markerSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc((mazeCols - 0.5) * cellSize, mazeRows * cellSize, markerSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // --- Download ---
+        downloadBtn.addEventListener('click', () => {
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'maze.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        });
+    </script>
+</body>
+</html>

@@ -668,55 +668,39 @@
                 canvas.classList.remove('transparent-bg');
             }
 
-            const minT = Math.max(0.3, cellSize * 0.04);
-            const maxT = cellSize * 0.92;
-
-            // Helper: get wall color and thickness from adjacent cells
-            function wallStyle(idx1, idx2) {
-                let c;
-                if (idx2 === -1) {
-                    c = cellColors[idx1];
-                } else {
-                    const a = cellColors[idx1], b = cellColors[idx2];
-                    c = {
-                        r: (a.r + b.r) >> 1,
-                        g: (a.g + b.g) >> 1,
-                        b: (a.b + b.b) >> 1,
-                        brightness: (a.brightness + b.brightness) / 2
-                    };
+            // Fill each cell with image color/brightness
+            for (let cy = 0; cy < mazeRows; cy++) {
+                for (let cx = 0; cx < mazeCols; cx++) {
+                    const c = cellColors[cy * mazeCols + cx];
+                    if (colored) {
+                        ctx.fillStyle = `rgb(${c.r},${c.g},${c.b})`;
+                    } else {
+                        const gray = Math.round(c.brightness * 255);
+                        ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
+                    }
+                    ctx.fillRect(cx * cellSize, cy * cellSize, cellSize, cellSize);
                 }
-                const darkness = 1 - c.brightness;
-                const t = minT + Math.pow(darkness, gamma) * (maxT - minT);
-                const color = colored ? `rgb(${c.r},${c.g},${c.b})` : '#000000';
-                return { t, color };
             }
 
+            // Wall thickness: scale with cell size but cap so walls stay readable
+            const wallT = Math.max(1, Math.min(cellSize * 0.12, 6));
+
+            ctx.strokeStyle = colored ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = wallT;
             ctx.lineCap = 'square';
 
             // Draw horizontal walls
             for (let y = 0; y <= mazeRows; y++) {
                 for (let x = 0; x < mazeCols; x++) {
                     let hasWall;
-                    let idx1, idx2;
                     if (y === 0) {
                         hasWall = mazeCells[x].walls.top;
-                        idx1 = x;
-                        idx2 = -1;
                     } else if (y === mazeRows) {
                         hasWall = mazeCells[(mazeRows - 1) * mazeCols + x].walls.bottom;
-                        idx1 = (mazeRows - 1) * mazeCols + x;
-                        idx2 = -1;
                     } else {
                         hasWall = mazeCells[y * mazeCols + x].walls.top;
-                        idx1 = y * mazeCols + x;
-                        idx2 = (y - 1) * mazeCols + x;
                     }
-
                     if (!hasWall) continue;
-
-                    const s = wallStyle(idx1, idx2);
-                    ctx.strokeStyle = s.color;
-                    ctx.lineWidth = s.t;
                     ctx.beginPath();
                     ctx.moveTo(x * cellSize, y * cellSize);
                     ctx.lineTo((x + 1) * cellSize, y * cellSize);
@@ -728,74 +712,18 @@
             for (let y = 0; y < mazeRows; y++) {
                 for (let x = 0; x <= mazeCols; x++) {
                     let hasWall;
-                    let idx1, idx2;
                     if (x === 0) {
                         hasWall = mazeCells[y * mazeCols].walls.left;
-                        idx1 = y * mazeCols;
-                        idx2 = -1;
                     } else if (x === mazeCols) {
                         hasWall = mazeCells[y * mazeCols + mazeCols - 1].walls.right;
-                        idx1 = y * mazeCols + mazeCols - 1;
-                        idx2 = -1;
                     } else {
                         hasWall = mazeCells[y * mazeCols + x].walls.left;
-                        idx1 = y * mazeCols + x;
-                        idx2 = y * mazeCols + x - 1;
                     }
-
                     if (!hasWall) continue;
-
-                    const s = wallStyle(idx1, idx2);
-                    ctx.strokeStyle = s.color;
-                    ctx.lineWidth = s.t;
                     ctx.beginPath();
                     ctx.moveTo(x * cellSize, y * cellSize);
                     ctx.lineTo(x * cellSize, (y + 1) * cellSize);
                     ctx.stroke();
-                }
-            }
-
-            // Draw grid intersection dots to fill corner gaps
-            for (let y = 0; y <= mazeRows; y++) {
-                for (let x = 0; x <= mazeCols; x++) {
-                    let maxThickness = 0;
-                    let bestColor = '#000';
-
-                    const checkWall = (hasWall, i1, i2) => {
-                        if (!hasWall) return;
-                        const s = wallStyle(i1, i2 === undefined ? -1 : i2);
-                        if (s.t > maxThickness) {
-                            maxThickness = s.t;
-                            bestColor = s.color;
-                        }
-                    };
-
-                    if (x < mazeCols && y < mazeRows) {
-                        const idx = y * mazeCols + x;
-                        checkWall(mazeCells[idx].walls.top, idx, y > 0 ? (y - 1) * mazeCols + x : undefined);
-                        checkWall(mazeCells[idx].walls.left, idx, x > 0 ? y * mazeCols + x - 1 : undefined);
-                    }
-                    if (x > 0 && y < mazeRows) {
-                        const idx = y * mazeCols + x - 1;
-                        checkWall(mazeCells[idx].walls.top, idx, y > 0 ? (y - 1) * mazeCols + x - 1 : undefined);
-                        checkWall(mazeCells[idx].walls.right, idx, x < mazeCols ? y * mazeCols + x : undefined);
-                    }
-                    if (x < mazeCols && y > 0) {
-                        const idx = (y - 1) * mazeCols + x;
-                        checkWall(mazeCells[idx].walls.bottom, idx, y < mazeRows ? y * mazeCols + x : undefined);
-                        checkWall(mazeCells[idx].walls.left, idx, x > 0 ? (y - 1) * mazeCols + x - 1 : undefined);
-                    }
-                    if (x > 0 && y > 0) {
-                        const idx = (y - 1) * mazeCols + x - 1;
-                        checkWall(mazeCells[idx].walls.bottom, idx, y < mazeRows ? y * mazeCols + x - 1 : undefined);
-                        checkWall(mazeCells[idx].walls.right, idx, x < mazeCols ? (y - 1) * mazeCols + x : undefined);
-                    }
-
-                    if (maxThickness > 0) {
-                        const half = maxThickness / 2;
-                        ctx.fillStyle = bestColor;
-                        ctx.fillRect(x * cellSize - half, y * cellSize - half, maxThickness, maxThickness);
-                    }
                 }
             }
 
